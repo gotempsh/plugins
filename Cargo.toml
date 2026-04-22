@@ -1,0 +1,67 @@
+[workspace]
+resolver = "2"
+members = [
+    "example-plugin",
+    "lighthouse-plugin",
+    "indexnow-plugin",
+    "google-indexing-plugin",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+authors = ["Temps Contributors"]
+repository = "https://github.com/gotempsh/plugins"
+homepage = "https://temps.sh"
+
+[workspace.dependencies]
+# Temps plugin SDK — pinned to a released Temps tag.
+# Bump the tag when you want to pick up SDK changes.
+temps-plugin-sdk = { git = "https://github.com/gotempsh/temps", tag = "v0.0.8" }
+
+# HTTP and async
+axum = "0.8"
+tokio = { version = "1.47.1", features = ["full"] }
+futures = "0.3.31"
+
+# Serialization
+serde = { version = "=1.0.228", features = ["derive"] }
+serde_json = "1"
+
+# Database (Sea-ORM matches the SDK's version at v0.0.8)
+sea-orm = { version = "1.1.14", features = [
+    "sqlx-postgres",
+    "sqlx-sqlite",
+    "runtime-tokio-rustls",
+    "macros",
+    "with-chrono",
+    "with-uuid",
+    "with-json",
+] }
+
+# Errors and logging
+thiserror = "2.0.17"
+tracing = "0.1"
+
+# OpenAPI
+utoipa = { version = "5.4.0", features = ["axum_extras"] }
+
+# Utilities
+chrono = { version = "0.4.38", features = ["serde"] }
+uuid = { version = "1.10.0", features = ["v4"] }
+reqwest = { version = "0.12.15", default-features = false, features = [
+    "json",
+    "rustls-tls",
+] }
+url = "2.5"
+include_dir = "0.7"
+mime_guess = "2.0"
+
+# HTML parsing (used by crawler-style plugins)
+scraper = "0.25"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = true

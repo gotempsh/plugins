@@ -1,0 +1,23 @@
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+
+// The plugin UI is served at /api/x/lighthouse/ui/
+// In dev mode, vite runs standalone and proxies API calls to the plugin process.
+export default defineConfig({
+  plugins: [react()],
+  base: "/api/x/lighthouse/ui/",
+  build: {
+    outDir: "dist",
+    emptyOutDir: true,
+  },
+  server: {
+    port: 5175,
+    proxy: {
+      // Proxy plugin API calls to the running plugin binary
+      "/api/x/lighthouse": {
+        target: "http://localhost:8082",
+        changeOrigin: true,
+      },
+    },
+  },
+});
