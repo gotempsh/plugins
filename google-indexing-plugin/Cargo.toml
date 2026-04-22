@@ -24,7 +24,7 @@ thiserror = { workspace = true }
 include_dir = { workspace = true }
 mime_guess = { workspace = true }
 utoipa = { workspace = true }
-jsonwebtoken = "10.3.0"
+jsonwebtoken = { version = "10.3.0", features = ["aws_lc_rs"] }
 base64 = "0.22"
 
 [dev-dependencies]
