@@ -10,8 +10,8 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build:
-    name: Build & test
+  rust:
+    name: Rust build & test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -33,3 +33,38 @@ jobs:
 
       - name: cargo test
         run: cargo test --workspace
+
+  typescript:
+    name: TypeScript build & test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Use the reviewed SDK source until this Temps version is available on npm.
+      - name: Check out Temps plugin SDK
+        uses: actions/checkout@v4
+        with:
+          repository: gotempsh/temps
+          ref: c7f6c1df661adc734f5af54d6706e6598d17895c
+          path: .temps-source
+
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+
+      - name: Build and link Temps plugin SDK
+        working-directory: .temps-source/sdks/node
+        run: |
+          bun install --frozen-lockfile
+          cd packages/plugin-sdk
+          bun run build
+          bun link
+
+      - name: Test and build Deployment Pulse
+        working-directory: deployment-pulse-plugin
+        run: |
+          bun link @temps-sdk/plugin
+          bun run test
+          bunx tsc --noEmit
+          bun run build

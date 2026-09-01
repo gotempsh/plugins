@@ -23,19 +23,30 @@ jobs:
           - target: x86_64-unknown-linux-gnu
             os: ubuntu-latest
             suffix: x86_64-linux
+            bun_target: bun-linux-x64
           - target: aarch64-unknown-linux-gnu
             os: ubuntu-latest
             suffix: aarch64-linux
             linker: aarch64-linux-gnu-gcc
+            bun_target: bun-linux-arm64
           - target: x86_64-apple-darwin
             os: macos-latest
             suffix: x86_64-darwin
+            bun_target: bun-darwin-x64
           - target: aarch64-apple-darwin
             os: macos-latest
             suffix: aarch64-darwin
+            bun_target: bun-darwin-arm64
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Check out Temps plugin SDK
+        uses: actions/checkout@v4
+        with:
+          repository: gotempsh/temps
+          ref: c7f6c1df661adc734f5af54d6706e6598d17895c
+          path: .temps-source
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -61,6 +72,21 @@ jobs:
           CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
         run: cargo build --release --workspace --target ${{ matrix.target }}
 
+      - name: Build and link Temps plugin SDK
+        working-directory: .temps-source/sdks/node
+        run: |
+          bun install --frozen-lockfile
+          cd packages/plugin-sdk
+          bun run build
+          bun link
+
+      - name: Build Deployment Pulse
+        working-directory: deployment-pulse-plugin
+        run: |
+          bun link @temps-sdk/plugin
+          bun run embed
+          bun build src/index.ts --compile --target=${{ matrix.bun_target }} --outfile=dist/temps-deployment-pulse-plugin
+
       - name: Stage release artifacts
         shell: bash
         run: |
@@ -75,6 +101,9 @@ jobs:
             dst="dist/${binary}-${{ matrix.suffix }}"
             cp "${src}" "${dst}"
           done
+          cp \
+            deployment-pulse-plugin/dist/temps-deployment-pulse-plugin \
+            "dist/temps-deployment-pulse-plugin-${{ matrix.suffix }}"
           ls -la dist
 
       - name: Upload artifacts
