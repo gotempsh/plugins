@@ -66,5 +66,5 @@ jobs:
         run: |
           bun link @temps-sdk/plugin
           bun run test
-          bunx tsc --noEmit
           bun run build
+          bunx tsc --noEmit
