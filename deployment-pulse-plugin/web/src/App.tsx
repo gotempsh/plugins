@@ -149,7 +149,7 @@ export function App() {
       </header>
 
       <section className="metrics" aria-label="Deployment summary">
-        <article className="metric metric-primary">
+        <article className={`metric metric-primary ${attention > 0 ? "metric-alert" : "metric-clear"}`}>
           <span className="metric-label">Needs attention</span>
           <strong>{attention}</strong>
           <small>{overview.summary.failures24h} failed in the last 24h</small>
