@@ -2,7 +2,7 @@
 
 Official external plugins for [Temps](https://temps.sh) — drop-in binaries that extend the platform without forking or rebuilding it.
 
-All plugins in this repo are written in Rust using [`temps-plugin-sdk`](https://github.com/gotempsh/temps/tree/main/crates/temps-plugin-sdk) and communicate with the Temps server over stdin/stdout.
+Plugins in this repo use either the Rust [`temps-plugin-sdk`](https://github.com/gotempsh/temps/tree/main/crates/temps-plugin-sdk) or the TypeScript [`@temps-sdk/plugin`](https://github.com/gotempsh/temps/tree/main/sdks/node/packages/plugin-sdk). Both communicate with the Temps server over stdin/stdout and compile to standalone binaries.
 
 ## Plugins
 
@@ -12,6 +12,7 @@ All plugins in this repo are written in Rust using [`temps-plugin-sdk`](https://
 | [`lighthouse-plugin`](./lighthouse-plugin) | Runs Google Lighthouse audits after every deployment and tracks Core Web Vitals over time. |
 | [`indexnow-plugin`](./indexnow-plugin) | Automatically submits deployed URLs to IndexNow-supporting search engines (Bing, Yandex, Seznam). |
 | [`google-indexing-plugin`](./google-indexing-plugin) | Notifies the Google Indexing API when pages are published or removed. |
+| [`deployment-pulse-plugin`](./deployment-pulse-plugin) | TypeScript reference plugin with a searchable, cross-project deployment health dashboard. |
 
 ## Install a prebuilt binary
 
@@ -47,9 +48,20 @@ chmod +x ~/.temps/plugins/temps-lighthouse-plugin
 
 Open **Settings → Plugins** in the Temps dashboard and click **Reload Plugins**.
 
+For the TypeScript example, use Bun:
+
+```bash
+cd deployment-pulse-plugin
+bun install --frozen-lockfile
+bun run test
+bun run build
+cp dist/temps-deployment-pulse-plugin ~/.temps/plugins/
+chmod +x ~/.temps/plugins/temps-deployment-pulse-plugin
+```
+
 ## Plugin structure
 
-Each plugin is a standalone Cargo crate with the same layout:
+Rust plugins are standalone Cargo crates:
 
 ```
 lighthouse-plugin/
@@ -61,13 +73,31 @@ lighthouse-plugin/
 
 The `build.rs` runs `bun install && bun run build` in `web/` when the `web/` directory exists, then the Rust code embeds the built assets with `include_dir!`.
 
+TypeScript plugins follow the same single-binary model:
+
+```
+deployment-pulse-plugin/
+├── package.json    # SDK dependency and Bun scripts
+├── scripts/        # embeds the compiled UI
+├── src/            # plugin process and tests
+└── web/            # Vite + React UI
+```
+
+`bun run build` builds the UI, embeds it into TypeScript, and compiles the
+plugin into one executable. Temps does not need Bun or Node.js at runtime.
+
 ## Write your own plugin
 
-The easiest starting point is to copy `example-plugin`, rename it, and edit from there. See the [plugin system docs](https://temps.sh/docs/plugins) for the full SDK reference, protocol details, and service registration patterns.
+For Rust, copy `example-plugin`. For TypeScript, copy
+`deployment-pulse-plugin`. See the [plugin system docs](https://temps.sh/docs/plugins)
+for the full SDK reference, protocol details, and service registration patterns.
 
 ## Versioning
 
-This repo pins to a specific Temps SDK version via `temps-plugin-sdk = { git = "...", tag = "vX.Y.Z" }` in the workspace `Cargo.toml`. Bump the tag in a single PR when you want to pick up new SDK features — every plugin in the workspace upgrades together.
+Rust plugins pin `temps-plugin-sdk = { git = "...", tag = "vX.Y.Z" }`.
+The TypeScript SDK and individual plugins use their own semantic versions
+because they can release independently from Temps. Compatibility is defined by
+the external-plugin protocol version.
 
 ## License
 

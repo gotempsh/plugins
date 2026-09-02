@@ -1,0 +1,6 @@
+node_modules/
+dist/
+web/node_modules/
+web/dist/
+src/_embedded_ui.ts
+*.tgz
