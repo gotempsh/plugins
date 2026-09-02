@@ -45,7 +45,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: gotempsh/temps
-          ref: 5f552212eea78a23141e9d4381ffba3d38fbe314
+          ref: 56eae703bac0aff51d2a8f2a905f4d2d3c061aee
           path: .temps-source
 
       - name: Install Rust
