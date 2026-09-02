@@ -94,10 +94,10 @@ for the full SDK reference, protocol details, and service registration patterns.
 
 ## Versioning
 
-SDK versions follow Temps releases. Rust plugins pin
-`temps-plugin-sdk = { git = "...", tag = "vX.Y.Z" }`, and TypeScript plugins
-depend on the matching `@temps-sdk/plugin` npm version. Individual plugins keep
-their own versions because they can release independently from Temps.
+Rust plugins pin `temps-plugin-sdk = { git = "...", tag = "vX.Y.Z" }`.
+The TypeScript SDK and individual plugins use their own semantic versions
+because they can release independently from Temps. Compatibility is defined by
+the external-plugin protocol version.
 
 ## License
 

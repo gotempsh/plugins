@@ -15,8 +15,7 @@ host does not need Bun or Node.js installed.
 
 ## Build and test
 
-The TypeScript SDK follows Temps release versions. Once
-`@temps-sdk/plugin` has been published for the matching Temps release:
+Once `@temps-sdk/plugin@0.1.0-beta.1` has been published:
 
 ```bash
 bun install
@@ -26,8 +25,8 @@ bun run build
 
 The executable is written to `dist/temps-deployment-pulse-plugin`.
 
-Before the first SDK-bearing Temps release is published, link the SDK from a
-local checkout of `gotempsh/temps`:
+Before the first SDK release is published, link it from a local checkout of
+`gotempsh/temps`:
 
 ```bash
 cd ../temps/sdks/node

@@ -11,7 +11,7 @@
     "test": "bun test src web/src"
   },
   "dependencies": {
-    "@temps-sdk/plugin": "^0.1.0-beta.56"
+    "@temps-sdk/plugin": "0.1.0-beta.1"
   },
   "devDependencies": {
     "@types/bun": "^1.0.0",
