@@ -15,31 +15,15 @@ host does not need Bun or Node.js installed.
 
 ## Build and test
 
-Once `@temps-sdk/plugin@0.1.0-beta.1` has been published:
+Install the exact SDK version recorded in `bun.lock`, then build and test:
 
 ```bash
-bun install
+bun install --frozen-lockfile
 bun run test
 bun run build
 ```
 
 The executable is written to `dist/temps-deployment-pulse-plugin`.
-
-Before the first SDK release is published, link it from a local checkout of
-`gotempsh/temps`:
-
-```bash
-cd ../temps/sdks/node
-bun install --frozen-lockfile
-cd packages/plugin-sdk
-bun run build
-bun link
-
-cd ../../../../plugins/deployment-pulse-plugin
-bun link @temps-sdk/plugin
-bun run test
-bun run build
-```
 
 ## Install locally
 

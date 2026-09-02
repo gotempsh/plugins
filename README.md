@@ -52,7 +52,7 @@ For the TypeScript example, use Bun:
 
 ```bash
 cd deployment-pulse-plugin
-bun install
+bun install --frozen-lockfile
 bun run test
 bun run build
 cp dist/temps-deployment-pulse-plugin ~/.temps/plugins/
