@@ -1,0 +1,10 @@
+{
+  // SPDX-FileCopyrightText: 2024-2026 Temps Contributors
+  // SPDX-License-Identifier: MIT OR Apache-2.0
+  "extends": "../deployment-pulse-plugin/tsconfig.json",
+  "compilerOptions": {
+    "types": ["bun"],
+    "typeRoots": ["../deployment-pulse-plugin/node_modules/@types"]
+  },
+  "include": ["./publish-plugin.ts", "./publish-plugin.test.ts"]
+}

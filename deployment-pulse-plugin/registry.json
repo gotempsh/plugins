@@ -1,0 +1,13 @@
+{
+  "name": "deployment-pulse",
+  "binary": "temps-deployment-pulse-plugin",
+  "title": "Deployment Pulse",
+  "summary": "Monitor deployment health across every project.",
+  "description": "A searchable, cross-project deployment health dashboard with failures and active deployments shown first.",
+  "author": "Temps",
+  "category": "Observability",
+  "keywords": ["deployments", "health", "projects"],
+  "repository": "https://github.com/gotempsh/plugins/tree/main/deployment-pulse-plugin",
+  "docs_url": "https://github.com/gotempsh/plugins/blob/main/deployment-pulse-plugin/README.md",
+  "logo_url": null
+}
