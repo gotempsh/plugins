@@ -22,7 +22,11 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { publishPlugin, type PublishOptions } from "./publish-plugin";
+import {
+  parseArguments,
+  publishPlugin,
+  type PublishOptions,
+} from "./publish-plugin";
 
 const KEYSET_DOMAIN = Buffer.from("temps-plugin-keyset-v1\0");
 const CATALOG_DOMAIN = Buffer.from("temps-plugin-catalog-v1\0");
@@ -141,6 +145,7 @@ function fixture() {
     manifestPath,
     JSON.stringify({
       name: "deployment-pulse",
+      version: "0.1.0",
       binary: "temps-deployment-pulse-plugin",
       title: "Deployment Pulse",
       summary: "Monitor deployments.",
@@ -167,7 +172,6 @@ function fixture() {
   );
   const options: PublishOptions = {
     manifestPath,
-    version: "0.1.0",
     artifactsDir,
     registryDir,
     signingKeyFile,
@@ -186,6 +190,12 @@ function fixture() {
     keysetDocument,
     roots,
   };
+}
+
+function setManifestVersion(options: PublishOptions, version: string): void {
+  const manifest = JSON.parse(readFileSync(options.manifestPath, "utf8"));
+  manifest.version = version;
+  writeFileSync(options.manifestPath, JSON.stringify(manifest));
 }
 
 describe("single-plugin registry publisher", () => {
@@ -386,8 +396,6 @@ describe("single-plugin registry publisher", () => {
     const { options, dataDir } = fixture();
     await publishPlugin(options);
     const before = readFileSync(join(dataDir, "catalog.json"), "utf8");
-    options.version = "0.2.0";
-
     await expect(publishPlugin(options)).rejects.toThrow(
       "local catalogue does not exactly match the live verified registry catalogue",
     );
@@ -428,14 +436,14 @@ describe("single-plugin registry publisher", () => {
 
   test("uses ASCII SemVer ordering for prerelease identifiers", async () => {
     const { options, dataDir } = fixture();
-    options.version = "1.0.0-a";
+    setManifestVersion(options, "1.0.0-a");
     await publishPlugin(options);
     const before = readFileSync(join(dataDir, "catalog.json"), "utf8");
     options.liveState = {
       keyset: options.liveState!.keyset,
       catalog: JSON.parse(before),
     };
-    options.version = "1.0.0-A";
+    setManifestVersion(options, "1.0.0-A");
 
     await expect(publishPlugin(options)).rejects.toThrow(
       "refusing to replace deployment-pulse 1.0.0-a with older 1.0.0-A",
@@ -445,14 +453,14 @@ describe("single-plugin registry publisher", () => {
 
   test("compares large numeric SemVer identifiers without precision loss", async () => {
     const { options, dataDir } = fixture();
-    options.version = "1.0.0-9007199254740993";
+    setManifestVersion(options, "1.0.0-9007199254740993");
     await publishPlugin(options);
     const before = readFileSync(join(dataDir, "catalog.json"), "utf8");
     options.liveState = {
       keyset: options.liveState!.keyset,
       catalog: JSON.parse(before),
     };
-    options.version = "1.0.0-9007199254740992";
+    setManifestVersion(options, "1.0.0-9007199254740992");
 
     await expect(publishPlugin(options)).rejects.toThrow(
       "refusing to replace deployment-pulse 1.0.0-9007199254740993 with older 1.0.0-9007199254740992",
@@ -562,5 +570,37 @@ describe("single-plugin registry publisher", () => {
       "signed catalogue exceeds the 1048576-byte registry response limit",
     );
     expect(readFileSync(join(dataDir, "catalog.json"), "utf8")).toBe(before);
+  });
+
+  test("rejects unknown CLI flags instead of accidentally publishing", () => {
+    expect(() =>
+      parseArguments([
+        "--manifest",
+        "deployment-pulse-plugin/registry.json",
+        "--artifacts-dir",
+        "dist",
+        "--registry-dir",
+        "../temps-registry",
+        "--key-id",
+        "catalog-test-1",
+        "--signing-key-file",
+        "/secure/catalog.pem",
+        "--dry-rnu",
+        "true",
+      ]),
+    ).toThrow("unexpected argument --dry-rnu");
+  });
+
+  test("reports a stale publisher lock without removing it", async () => {
+    const { options, dataDir } = fixture();
+    const lockPath = join(dataDir, ".publish.lock");
+    writeFileSync(lockPath, '{"pid":123,"created_at":"earlier"}\n', {
+      mode: 0o600,
+    });
+
+    await expect(publishPlugin(options)).rejects.toThrow(
+      "confirm no publisher is running before removing the lock",
+    );
+    expect(existsSync(lockPath)).toBe(true);
   });
 });

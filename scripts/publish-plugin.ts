@@ -79,6 +79,7 @@ type JsonRecord = Record<string, unknown>;
 
 export type PluginPublishManifest = {
   name: string;
+  version: string;
   binary: string;
   title: string;
   summary: string;
@@ -94,7 +95,6 @@ export type PluginPublishManifest = {
 type PlatformRelease = { url: string; sha256: string };
 
 type RegistryPlugin = Omit<PluginPublishManifest, "binary"> & {
-  version: string;
   platforms: Record<string, PlatformRelease>;
 };
 
@@ -132,7 +132,6 @@ type KeysetDocument = {
 
 export type PublishOptions = {
   manifestPath: string;
-  version: string;
   artifactsDir: string;
   registryDir: string;
   signingKeyFile: string;
@@ -442,6 +441,7 @@ function parseManifest(value: unknown): PluginPublishManifest {
     fail("plugin publishing manifest must be a JSON object");
   for (const field of [
     "name",
+    "version",
     "binary",
     "title",
     "summary",
@@ -459,7 +459,9 @@ function parseManifest(value: unknown): PluginPublishManifest {
     }
   }
   const name = value.name as string;
+  const version = value.version as string;
   const binary = value.binary as string;
+  parseVersion(version);
   if (!/^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$/.test(name)) {
     fail(
       "plugin name must contain only lowercase ASCII letters, digits, and hyphens",
@@ -505,6 +507,7 @@ function parseManifest(value: unknown): PluginPublishManifest {
   }
   return {
     name,
+    version,
     binary,
     title: value.title as string,
     summary: value.summary as string,
@@ -649,11 +652,16 @@ async function fetchJsonCapped(
   label: string,
   limit: number,
 ): Promise<unknown> {
-  const response = await fetch(url, {
-    headers: { accept: "application/json" },
-    redirect: "error",
-    signal: AbortSignal.timeout(10_000),
-  });
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      headers: { accept: "application/json" },
+      redirect: "error",
+      signal: AbortSignal.timeout(10_000),
+    });
+  } catch (error) {
+    fail(`${label} request to ${url} failed: ${errorMessage(error)}`);
+  }
   if (!response.ok) fail(`${label} returned HTTP ${response.status}`);
   const contentLength = response.headers.get("content-length");
   const declaredLength = contentLength === null ? null : Number(contentLength);
@@ -679,6 +687,11 @@ async function fetchJsonCapped(
       }
       chunks.push(value);
     }
+  } catch (error) {
+    if (error instanceof PublishError) throw error;
+    fail(
+      `${label} response from ${url} failed while streaming: ${errorMessage(error)}`,
+    );
   } finally {
     reader.releaseLock();
   }
@@ -941,7 +954,6 @@ async function publishPluginLocked(
 ): Promise<PublishResult> {
   const now = options.now ?? new Date();
   if (!Number.isFinite(now.getTime())) fail("publish time is invalid");
-  parseVersion(options.version);
 
   const registryRoot = realpathSync(options.registryDir);
   const registryDataDir = join(registryRoot, "src", "registry-data");
@@ -1023,7 +1035,7 @@ async function publishPluginLocked(
 
   const staged = collectArtifacts(
     manifest,
-    options.version,
+    manifest.version,
     resolve(options.artifactsDir),
   );
   const artifacts = staged.artifacts;
@@ -1034,21 +1046,20 @@ async function publishPluginLocked(
     const { binary: _binary, ...publicManifest } = manifest;
     const plugin: RegistryPlugin = {
       ...publicManifest,
-      version: options.version,
       platforms,
     };
     const existing = currentCatalog.plugins.find(
       (candidate) => candidate.name === manifest.name,
     );
-    if (existing && compareVersions(options.version, existing.version) < 0) {
+    if (existing && compareVersions(manifest.version, existing.version) < 0) {
       fail(
-        `refusing to replace ${manifest.name} ${existing.version} with older ${options.version}`,
+        `refusing to replace ${manifest.name} ${existing.version} with older ${manifest.version}`,
       );
     }
-    if (existing && compareVersions(options.version, existing.version) === 0) {
+    if (existing && compareVersions(manifest.version, existing.version) === 0) {
       if (!samePlugin(existing, plugin)) {
         fail(
-          `refusing to change immutable release ${manifest.name} ${options.version}`,
+          `refusing to change immutable release ${manifest.name} ${manifest.version}`,
         );
       }
       if (!options.dryRun) {
@@ -1056,7 +1067,7 @@ async function publishPluginLocked(
           copyArtifactAtomically(
             registryRoot,
             manifest.name,
-            options.version,
+            manifest.version,
             artifact.platform,
             artifact.source,
             artifact.release.sha256,
@@ -1065,7 +1076,7 @@ async function publishPluginLocked(
       }
       return {
         plugin: manifest.name,
-        version: options.version,
+        version: manifest.version,
         revision: currentCatalog.revision,
         artifacts: platforms,
         catalogPath,
@@ -1111,7 +1122,7 @@ async function publishPluginLocked(
     if (options.dryRun) {
       return {
         plugin: manifest.name,
-        version: options.version,
+        version: manifest.version,
         revision: nextDocument.revision,
         artifacts: platforms,
         catalogPath,
@@ -1123,7 +1134,7 @@ async function publishPluginLocked(
       copyArtifactAtomically(
         registryRoot,
         manifest.name,
-        options.version,
+        manifest.version,
         artifact.platform,
         artifact.source,
         artifact.release.sha256,
@@ -1133,7 +1144,7 @@ async function publishPluginLocked(
 
     return {
       plugin: manifest.name,
-      version: options.version,
+      version: manifest.version,
       revision: nextDocument.revision,
       artifacts: platforms,
       catalogPath,
@@ -1155,15 +1166,28 @@ export async function publishPlugin(
   );
   assertInside(registryRoot, registryDataDir, "registry data directory");
   const lockPath = join(registryDataDir, ".publish.lock");
-  const lock = openSync(
-    lockPath,
-    constants.O_WRONLY |
-      constants.O_CREAT |
-      constants.O_EXCL |
-      (constants.O_NOFOLLOW ?? 0),
-    0o600,
-  );
+  let lock: number;
   try {
+    lock = openSync(
+      lockPath,
+      constants.O_WRONLY |
+        constants.O_CREAT |
+        constants.O_EXCL |
+        (constants.O_NOFOLLOW ?? 0),
+      0o600,
+    );
+  } catch (error) {
+    fail(
+      `could not acquire publisher lock ${lockPath}: ${errorMessage(error)}. ` +
+        "If a previous publisher crashed, confirm no publisher is running before removing the lock.",
+    );
+  }
+  try {
+    writeFileSync(
+      lock,
+      `${JSON.stringify({ pid: process.pid, created_at: new Date().toISOString() })}\n`,
+    );
+    fsyncSync(lock);
     return await publishPluginLocked(options);
   } finally {
     closeSync(lock);
@@ -1177,23 +1201,34 @@ function usage(): string {
 Usage:
   bun scripts/publish-plugin.ts \\
     --manifest deployment-pulse-plugin/registry.json \\
-    --version 0.1.0 \\
     --artifacts-dir ./dist \\
     --registry-dir ../temps-registry \\
     --key-id catalog-2026-01 \\
     --signing-key-file /secure/catalog-ed25519.pem [--dry-run]
 
-The signing key must be an Ed25519 PEM file with mode 0600. Its contents are
-never printed or copied. The registry checkout must already contain a valid,
-root-signed src/registry-data/keyset.json and signed catalog.json.`;
+The version is read from the plugin manifest so the runtime and catalogue use
+one source of truth. The signing key must be an Ed25519 PEM file with mode 0600;
+its contents are never printed or copied. The registry checkout must already
+contain a valid, root-signed keyset.json and signed catalog.json. This command
+stages a local checkout only; production publication must use serialized,
+protected deployment with compare-and-swap at the live commit boundary.`;
 }
 
-function parseArguments(argv: string[]): PublishOptions | null {
+export function parseArguments(argv: string[]): PublishOptions | null {
   if (argv.includes("--help") || argv.includes("-h")) return null;
   const values = new Map<string, string>();
   let dryRun = false;
+  const allowed = new Set([
+    "--manifest",
+    "--artifacts-dir",
+    "--registry-dir",
+    "--key-id",
+    "--signing-key-file",
+    "--dry-run",
+  ]);
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
+    if (!allowed.has(argument)) fail(`unexpected argument ${argument}`);
     if (argument === "--dry-run") {
       dryRun = true;
       continue;
@@ -1207,7 +1242,6 @@ function parseArguments(argv: string[]): PublishOptions | null {
   }
   const required = [
     "--manifest",
-    "--version",
     "--artifacts-dir",
     "--registry-dir",
     "--key-id",
@@ -1218,7 +1252,6 @@ function parseArguments(argv: string[]): PublishOptions | null {
   }
   return {
     manifestPath: values.get("--manifest")!,
-    version: values.get("--version")!,
     artifactsDir: values.get("--artifacts-dir")!,
     registryDir: values.get("--registry-dir")!,
     keyId: values.get("--key-id")!,

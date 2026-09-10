@@ -1,5 +1,6 @@
 {
   "name": "deployment-pulse",
+  "version": "0.1.0",
   "binary": "temps-deployment-pulse-plugin",
   "title": "Deployment Pulse",
   "summary": "Monitor deployment health across every project.",
