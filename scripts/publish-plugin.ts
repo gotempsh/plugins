@@ -69,8 +69,10 @@ const OFFICIAL_ROOT_KEYS = new Map<string, string>([
 ]);
 
 const PLATFORM_ARTIFACTS = [
-  ["linux-amd64", "x86_64-linux"],
-  ["linux-arm64", "aarch64-linux"],
+  ["linux-amd64-gnu", "x86_64-linux-gnu"],
+  ["linux-amd64-musl", "x86_64-linux-musl"],
+  ["linux-arm64-gnu", "aarch64-linux-gnu"],
+  ["linux-arm64-musl", "aarch64-linux-musl"],
   ["darwin-amd64", "x86_64-darwin"],
   ["darwin-arm64", "aarch64-darwin"],
 ] as const;

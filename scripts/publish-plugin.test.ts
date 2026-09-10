@@ -32,8 +32,10 @@ const KEYSET_DOMAIN = Buffer.from("temps-plugin-keyset-v1\0");
 const CATALOG_DOMAIN = Buffer.from("temps-plugin-catalog-v1\0");
 const SPKI_PREFIX_BYTES = 12;
 const PLATFORMS = [
-  "x86_64-linux",
-  "aarch64-linux",
+  "x86_64-linux-gnu",
+  "x86_64-linux-musl",
+  "aarch64-linux-gnu",
+  "aarch64-linux-musl",
   "x86_64-darwin",
   "aarch64-darwin",
 ];
@@ -199,7 +201,7 @@ function setManifestVersion(options: PublishOptions, version: string): void {
 }
 
 describe("single-plugin registry publisher", () => {
-  test("copies four immutable artifacts and atomically signs the next catalogue", async () => {
+  test("copies six immutable artifacts and atomically signs the next catalogue", async () => {
     const { options, catalog, registryDir, dataDir } = fixture();
     const result = await publishPlugin(options);
 
@@ -210,8 +212,10 @@ describe("single-plugin registry publisher", () => {
       dryRun: false,
     });
     expect(Object.keys(result.artifacts)).toEqual([
-      "linux-amd64",
-      "linux-arm64",
+      "linux-amd64-gnu",
+      "linux-amd64-musl",
+      "linux-arm64-gnu",
+      "linux-arm64-musl",
       "darwin-amd64",
       "darwin-arm64",
     ]);
@@ -250,8 +254,8 @@ describe("single-plugin registry publisher", () => {
       name: "deployment-pulse",
       version: "0.1.0",
       platforms: {
-        "linux-amd64": {
-          url: "https://registry.temps.sh/artifacts/deployment-pulse/0.1.0/linux-amd64/plugin",
+        "linux-amd64-gnu": {
+          url: "https://registry.temps.sh/artifacts/deployment-pulse/0.1.0/linux-amd64-gnu/plugin",
         },
       },
     });
@@ -282,7 +286,7 @@ describe("single-plugin registry publisher", () => {
       catalog: JSON.parse(before),
     };
     writeFileSync(
-      join(artifactsDir, "temps-deployment-pulse-plugin-x86_64-linux"),
+      join(artifactsDir, "temps-deployment-pulse-plugin-x86_64-linux-gnu"),
       "tampered replacement",
     );
 
@@ -308,7 +312,7 @@ describe("single-plugin registry publisher", () => {
           "artifacts",
           "deployment-pulse",
           "0.1.0",
-          "linux-amd64",
+          "linux-amd64-gnu",
           "plugin",
         ),
       ),
@@ -325,7 +329,7 @@ describe("single-plugin registry publisher", () => {
       "artifacts",
       "deployment-pulse",
       "0.1.0",
-      "linux-amd64",
+      "linux-amd64-gnu",
       "plugin",
     );
     unlinkSync(artifact);
@@ -473,13 +477,13 @@ describe("single-plugin registry publisher", () => {
     const before = readFileSync(join(dataDir, "catalog.json"), "utf8");
     const artifact = join(
       artifactsDir,
-      "temps-deployment-pulse-plugin-x86_64-linux",
+      "temps-deployment-pulse-plugin-x86_64-linux-gnu",
     );
     unlinkSync(artifact);
     symlinkSync(options.signingKeyFile, artifact);
 
     await expect(publishPlugin(options)).rejects.toThrow(
-      "release artifact for linux-amd64 must be a regular file",
+      "release artifact for linux-amd64-gnu must be a regular file",
     );
     expect(readFileSync(join(dataDir, "catalog.json"), "utf8")).toBe(before);
   });
