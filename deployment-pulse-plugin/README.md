@@ -39,9 +39,15 @@ read-only API at `/api/x/deployment-pulse/overview`.
 
 ## Permissions and data
 
-Deployment Pulse declares no raw API capability, database access, or host-data
-access. It reads only the caller-scoped `list_projects` and `list_deployments`
-methods exposed by the signed protocol-v2 SDK channel.
+Deployment Pulse is an installation-wide dashboard for system administrators.
+Its API requires an SDK-verified caller with the effective `system:admin`
+permission before querying any project data. Restricted API keys do not gain
+access merely because their owner has an administrator role.
+
+It declares no raw API capability, database access, or host-data access. The
+legacy `list_projects` and `list_deployments` channel methods span the whole
+installation; they are not scoped to the caller. The permission check is
+therefore mandatory for this dashboard.
 
 Project links use the public `/projects/<project_slug>` route. Internal project
 IDs are never exposed in dashboard URLs.

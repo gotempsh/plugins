@@ -3,6 +3,7 @@
 
 import {
   createManifest,
+  extractAuthContext,
   runPlugin,
   type PluginContext,
   type PluginEvent,
@@ -77,7 +78,7 @@ function json(
   res.end(JSON.stringify(body));
 }
 
-const plugin: TempsPlugin = {
+export const plugin: TempsPlugin = {
   manifest() {
     return createManifest("deployment-pulse", pluginMetadata.version)
       .displayName("Deployment Pulse")
@@ -98,6 +99,20 @@ const plugin: TempsPlugin = {
       const url = new URL(req.url ?? "/", "http://localhost");
       if (req.method !== "GET" || url.pathname !== "/overview") {
         json(res, 404, { error: "Not found" });
+        return;
+      }
+
+      // Legacy typed channel queries span the installation. Only the SDK's
+      // verified caller and effective permissions may authorize this view.
+      const caller = extractAuthContext(req);
+      if (!caller) {
+        json(res, 401, { error: "Sign in to view deployment health." });
+        return;
+      }
+      if (!caller.hasPermission("system:admin")) {
+        json(res, 403, {
+          error: "System administrator permission is required to view deployment health across all projects.",
+        });
         return;
       }
 
@@ -145,4 +160,6 @@ const plugin: TempsPlugin = {
   },
 };
 
-await runPlugin(plugin);
+if (import.meta.main) {
+  await runPlugin(plugin);
+}
