@@ -3,6 +3,7 @@
 
 import {
   createManifest,
+  extractAuthContext,
   runPlugin,
   type PluginContext,
   type PluginEvent,
@@ -10,8 +11,13 @@ import {
   type RequestHandler,
   type TempsPlugin,
 } from "@temps-sdk/plugin";
+import pluginMetadata from "../registry.json";
 import { embeddedAssets } from "./_embedded_ui.js";
-import { buildOverview, summarizeProject, type ProjectPulse } from "./overview.js";
+import {
+  buildOverview,
+  summarizeProject,
+  type ProjectPulse,
+} from "./overview.js";
 
 const MAX_CONCURRENT_PROJECT_QUERIES = 6;
 
@@ -21,12 +27,21 @@ async function loadProjectPulses(
 ): Promise<ProjectPulse[]> {
   const results: ProjectPulse[] = [];
 
-  for (let offset = 0; offset < projects.length; offset += MAX_CONCURRENT_PROJECT_QUERIES) {
-    const batch = projects.slice(offset, offset + MAX_CONCURRENT_PROJECT_QUERIES);
+  for (
+    let offset = 0;
+    offset < projects.length;
+    offset += MAX_CONCURRENT_PROJECT_QUERIES
+  ) {
+    const batch = projects.slice(
+      offset,
+      offset + MAX_CONCURRENT_PROJECT_QUERIES,
+    );
     const pulses = await Promise.all(
       batch.map(async (project): Promise<ProjectPulse> => {
         try {
-          const deployments = await ctx.temps.listDeployments(project.id, { limit: 10 });
+          const deployments = await ctx.temps.listDeployments(project.id, {
+            limit: 10,
+          });
           return summarizeProject(project, deployments);
         } catch (error) {
           console.error(
@@ -51,7 +66,11 @@ async function loadProjectPulses(
   return results;
 }
 
-function json(res: Parameters<RequestHandler>[1], status: number, body: unknown): void {
+function json(
+  res: Parameters<RequestHandler>[1],
+  status: number,
+  body: unknown,
+): void {
   res.writeHead(status, {
     "Content-Type": "application/json; charset=utf-8",
     "Cache-Control": "no-store",
@@ -59,9 +78,9 @@ function json(res: Parameters<RequestHandler>[1], status: number, body: unknown)
   res.end(JSON.stringify(body));
 }
 
-const plugin: TempsPlugin = {
+export const plugin: TempsPlugin = {
   manifest() {
-    return createManifest("deployment-pulse", "0.1.0")
+    return createManifest("deployment-pulse", pluginMetadata.version)
       .displayName("Deployment Pulse")
       .description("See deployment health across every project at a glance")
       .requiresDb(false)
@@ -80,6 +99,20 @@ const plugin: TempsPlugin = {
       const url = new URL(req.url ?? "/", "http://localhost");
       if (req.method !== "GET" || url.pathname !== "/overview") {
         json(res, 404, { error: "Not found" });
+        return;
+      }
+
+      // Legacy typed channel queries span the installation. Only the SDK's
+      // verified caller and effective permissions may authorize this view.
+      const caller = extractAuthContext(req);
+      if (!caller) {
+        json(res, 401, { error: "Sign in to view deployment health." });
+        return;
+      }
+      if (!caller.hasPermission("system:admin")) {
+        json(res, 403, {
+          error: "System administrator permission is required to view deployment health across all projects.",
+        });
         return;
       }
 
@@ -104,7 +137,9 @@ const plugin: TempsPlugin = {
   },
 
   onStart() {
-    console.error(JSON.stringify({ level: "info", message: "Deployment Pulse started" }));
+    console.error(
+      JSON.stringify({ level: "info", message: "Deployment Pulse started" }),
+    );
   },
 
   onEvent(_ctx: PluginContext, event: PluginEvent) {
@@ -119,8 +154,12 @@ const plugin: TempsPlugin = {
   },
 
   onShutdown() {
-    console.error(JSON.stringify({ level: "info", message: "Deployment Pulse stopped" }));
+    console.error(
+      JSON.stringify({ level: "info", message: "Deployment Pulse stopped" }),
+    );
   },
 };
 
-await runPlugin(plugin);
+if (import.meta.main) {
+  await runPlugin(plugin);
+}

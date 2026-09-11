@@ -87,6 +87,9 @@ export function App() {
     background ? setRefreshing(true) : setLoading(true);
     try {
       const response = await fetch(API_URL, { headers: { Accept: "application/json" } });
+      if (response.status === 403) {
+        throw new Error("System administrator permission is required to view deployment health across all projects.");
+      }
       if (!response.ok) throw new Error(`Temps returned ${response.status}`);
       setOverview(await response.json());
       setError("");
