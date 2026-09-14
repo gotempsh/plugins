@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-09-14T12:33:31.951Z",
+  "plugins": [
+    {
+      "name": "my-plugin",
+      "title": "My plugin",
+      "summary": "A hello-world native Temps plugin",
+      "description": "A hello-world native Temps plugin",
+      "author": "Your team",
+      "category": "Development",
+      "repository": "https://github.com/gotempsh/temps-plugin-template",
+      "docsUrl": null,
+      "logoUrl": null,
+      "screenshots": [],
+      "latestVersion": "0.1.1",
+      "platforms": [
+        "linux-amd64-gnu",
+        "linux-arm64-gnu",
+        "linux-amd64-musl",
+        "linux-arm64-musl",
+        "darwin-amd64",
+        "darwin-arm64"
+      ],
+      "commit": "7506685388e6fbfa73e49ba4cc0293345965f99f",
+      "readmeUrl": "https://raw.githubusercontent.com/gotempsh/temps-plugin-template/7506685388e6fbfa73e49ba4cc0293345965f99f/README.md",
+      "validation": {
+        "metadata": "passed",
+        "build": "passed"
+      }
+    }
+  ]
+}

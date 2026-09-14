@@ -21,3 +21,4 @@ dist/
 
 # Logs
 *.log
+.catalog-build-plan.json
