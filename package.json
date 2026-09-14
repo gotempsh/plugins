@@ -1,0 +1,8 @@
+{
+  "private": true,
+  "scripts": {
+    "catalog:check": "bun scripts/catalog.ts --check",
+    "catalog:generate": "bun scripts/catalog.ts --write",
+    "test": "bun test"
+  }
+}
