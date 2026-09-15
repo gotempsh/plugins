@@ -1,25 +1,25 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-09-15T10:30:23.432Z",
+  "generated_at": "2026-09-15T11:27:48.094Z",
   "plugins": [
     {
       "name": "my-plugin",
       "title": "My plugin",
       "summary": "A hello-world native Temps plugin",
       "description": "A hello-world native Temps plugin",
-      "author": "Your team",
+      "author": "David Viejo",
       "category": "Development",
       "repository": "https://github.com/gotempsh/temps-plugin-template",
       "docsUrl": null,
       "logoUrl": null,
       "screenshots": [
         {
-          "url": "https://raw.githubusercontent.com/gotempsh/temps-plugin-template/d6e6914c3e65b920509625c28e4809a6f7c06386/assets/plugin-light.png",
+          "url": "https://raw.githubusercontent.com/gotempsh/temps-plugin-template/77433f82e9dfa581b4486f465f19124ff16dd50c/assets/plugin-light.png",
           "alt": "My plugin in light mode, showing its online status and hello-world API response",
           "caption": "The starter plugin running inside Temps in light mode."
         },
         {
-          "url": "https://raw.githubusercontent.com/gotempsh/temps-plugin-template/d6e6914c3e65b920509625c28e4809a6f7c06386/assets/plugin-dark.png",
+          "url": "https://raw.githubusercontent.com/gotempsh/temps-plugin-template/77433f82e9dfa581b4486f465f19124ff16dd50c/assets/plugin-dark.png",
           "alt": "My plugin in dark mode, showing its online status and hello-world API response",
           "caption": "The same plugin UI adapts to dark mode."
         }
@@ -33,8 +33,8 @@
         "darwin-amd64",
         "darwin-arm64"
       ],
-      "commit": "d6e6914c3e65b920509625c28e4809a6f7c06386",
-      "readmeUrl": "https://raw.githubusercontent.com/gotempsh/temps-plugin-template/d6e6914c3e65b920509625c28e4809a6f7c06386/README.md",
+      "commit": "77433f82e9dfa581b4486f465f19124ff16dd50c",
+      "readmeUrl": "https://raw.githubusercontent.com/gotempsh/temps-plugin-template/77433f82e9dfa581b4486f465f19124ff16dd50c/README.md",
       "validation": {
         "metadata": "passed",
         "build": "passed"
