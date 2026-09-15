@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-09-15T08:43:57.950Z",
+  "generated_at": "2026-09-15T10:30:23.432Z",
   "plugins": [
     {
       "name": "my-plugin",
@@ -12,7 +12,18 @@
       "repository": "https://github.com/gotempsh/temps-plugin-template",
       "docsUrl": null,
       "logoUrl": null,
-      "screenshots": [],
+      "screenshots": [
+        {
+          "url": "https://raw.githubusercontent.com/gotempsh/temps-plugin-template/d6e6914c3e65b920509625c28e4809a6f7c06386/assets/plugin-light.png",
+          "alt": "My plugin in light mode, showing its online status and hello-world API response",
+          "caption": "The starter plugin running inside Temps in light mode."
+        },
+        {
+          "url": "https://raw.githubusercontent.com/gotempsh/temps-plugin-template/d6e6914c3e65b920509625c28e4809a6f7c06386/assets/plugin-dark.png",
+          "alt": "My plugin in dark mode, showing its online status and hello-world API response",
+          "caption": "The same plugin UI adapts to dark mode."
+        }
+      ],
       "latestVersion": "0.1.1",
       "platforms": [
         "linux-amd64-gnu",
@@ -22,8 +33,8 @@
         "darwin-amd64",
         "darwin-arm64"
       ],
-      "commit": "7506685388e6fbfa73e49ba4cc0293345965f99f",
-      "readmeUrl": "https://raw.githubusercontent.com/gotempsh/temps-plugin-template/7506685388e6fbfa73e49ba4cc0293345965f99f/README.md",
+      "commit": "d6e6914c3e65b920509625c28e4809a6f7c06386",
+      "readmeUrl": "https://raw.githubusercontent.com/gotempsh/temps-plugin-template/d6e6914c3e65b920509625c28e4809a6f7c06386/README.md",
       "validation": {
         "metadata": "passed",
         "build": "passed"
