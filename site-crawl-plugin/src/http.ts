@@ -6,7 +6,7 @@ import https from "node:https";
 import ipaddr from "ipaddr.js";
 import { CrawlError } from "./types";
 export const USER_AGENT = "TempsSiteCrawl";
-export const MAX_BODY = 1024 * 1024;
+export const MAX_BODY = 8 * 1024 * 1024;
 export interface HttpResult {
   status: number;
   headers: Record<string, string>;
@@ -116,7 +116,8 @@ export const fetchPublic: FetchPage = async (url, signal) => {
             response.destroy(
               new CrawlError(
                 "body_limit",
-                "Response exceeds the 1 MiB crawl limit.",
+                "Inspection incomplete: response exceeds the 8 MiB crawl limit.",
+                status,
               ),
             );
             return;

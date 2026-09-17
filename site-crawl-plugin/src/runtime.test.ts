@@ -17,6 +17,11 @@ test("compiled plugin handshake, authentication, report API and embedded UI", as
   const dir = mkdtempSync(join(tmpdir(), "site-crawl-runtime-"));
   const socket = join(dir, "plugin.sock");
   const binary = join(dir, "site-crawl");
+  const uiBuild = Bun.spawn(["bun", "run", "build:ui"], {
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+  expect(await uiBuild.exited).toBe(0);
   const build = Bun.spawn(
     ["bun", "build", "src/index.ts", "--compile", "--outfile", binary],
     { stdout: "pipe", stderr: "pipe" },
@@ -125,7 +130,7 @@ test("compiled plugin handshake, authentication, report API and embedded UI", as
     ).toBe(200);
     const ui = await get("/ui/", { headers: headers("admin") });
     expect(ui.status).toBe(200);
-    expect(await ui.text()).toContain("Find the dead ends.");
+    expect(await ui.text()).toContain("Site Crawl");
     const created = await get("/api/reports", {
       method: "POST",
       headers: headers("admin"),

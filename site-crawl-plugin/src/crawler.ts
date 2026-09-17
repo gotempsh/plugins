@@ -286,14 +286,22 @@ export async function crawl(
       } catch (error) {
         if (signal.aborted) throw error;
         const code = error instanceof CrawlError ? error.code : "network_error";
+        if (error instanceof CrawlError && error.status !== undefined)
+          page.status = error.status;
         page.issues.push(
           issue(
             code,
             message(error),
-            code === "robots_blocked"
-              ? "Confirm this exclusion is intentional. Blocked pages were not inspected."
-              : "Check the URL and server, then run another crawl.",
-            code === "robots_blocked" ? "info" : "error",
+            code === "body_limit"
+              ? "The response was too large to inspect completely; this is not evidence of a broken route. Reduce the HTML payload or inspect this page separately."
+              : code === "robots_blocked"
+                ? "Confirm this exclusion is intentional. Blocked pages were not inspected."
+                : "Check the URL and server, then run another crawl.",
+            code === "body_limit"
+              ? "warning"
+              : code === "robots_blocked"
+                ? "info"
+                : "error",
           ),
         );
       }

@@ -1,126 +1,14 @@
 <!doctype html>
 <!-- SPDX-FileCopyrightText: 2024-2026 Temps Contributors -->
 <!-- SPDX-License-Identifier: MIT OR Apache-2.0 -->
-<html lang="en">
+<html lang="en" class="tds">
   <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Site Crawl · Temps</title>
-    <link rel="stylesheet" href="./style.css" />
   </head>
   <body>
-    <main>
-      <header>
-        <div class="eyebrow">TEMPS / SITE HEALTH</div>
-        <h1>Find the dead ends.</h1>
-        <p class="lead">
-          Crawl your deployed site. Fix broken routes and make every page easier
-          to discover.
-        </p>
-      </header>
-      <section class="panel">
-        <form id="crawl-form">
-          <label class="url-field"
-            >Site URL<input
-              id="url"
-              type="url"
-              placeholder="https://your-site.com"
-              required
-              autocomplete="url" /></label
-          ><label
-            >URL limit<select id="limit">
-              <option>25</option>
-              <option selected>100</option>
-              <option>250</option>
-              <option>500</option>
-            </select></label
-          ><button id="start" type="submit">
-            Start crawl <span aria-hidden="true">↗</span>
-          </button>
-        </form>
-        <p class="hint">
-          Public URLs only · Same-origin links · Respects robots.txt · Server
-          HTML, without JavaScript rendering
-        </p>
-      </section>
-      <section
-        class="panel automation-panel"
-        aria-labelledby="automation-title"
-      >
-        <div class="section-heading">
-          <h2 id="automation-title">Crawl after deployments</h2>
-          <span id="queue-state" class="hint"></span>
-        </div>
-        <p id="automation-status" class="hint">
-          Checking deployment event access…
-        </p>
-        <a id="automation-setup" href="/settings/plugins" target="_top" hidden
-          >Open plugin permissions</a
-        >
-        <form id="automation-form">
-          <label class="check-label"
-            ><input id="auto-enabled" type="checkbox" checked /> Automatically
-            crawl successful deployments</label
-          >
-          <label class="check-label"
-            ><input id="auto-production" type="checkbox" checked /> Production
-            only</label
-          >
-          <label
-            >URL limit<input
-              id="auto-limit"
-              type="number"
-              min="1"
-              max="500"
-              value="100"
-              required
-          /></label>
-          <button type="submit">Save automation</button>
-        </form>
-        <details class="project-controls">
-          <summary>Project controls</summary>
-          <div id="auto-projects"></div>
-        </details>
-        <p class="hint">
-          One crawl at a time. Deployment crawls wait five seconds before
-          starting. Reports identify the deployment that triggered them.
-        </p>
-        <button id="clear-queue" type="button" class="text-button" hidden>
-          Cancel queued crawls
-        </button>
-      </section>
-      <div id="error" role="alert" hidden></div>
-      <div class="workspace">
-        <aside>
-          <div class="section-heading">
-            <h2>Recent crawls</h2>
-            <button id="refresh" class="text-button" type="button">
-              Refresh
-            </button>
-          </div>
-          <p class="hint">Latest 30 reports are kept.</p>
-          <div id="history" aria-live="polite"></div>
-        </aside>
-        <section id="report" aria-live="polite">
-          <div class="empty">
-            <div class="empty-icon" aria-hidden="true">↗</div>
-            <h2>A route map with a fix list.</h2>
-            <p>
-              Enter your site URL to find HTTP errors, redirect loops, missing
-              metadata, and indexing conflicts.
-            </p>
-            <p>
-              Reports show which pages link to each URL, so you know where to
-              make the change.
-            </p>
-          </div>
-        </section>
-      </div>
-      <footer>
-        Checks provide evidence, not a search ranking or a security guarantee.
-        No AI provider is required.
-      </footer>
-    </main>
-    <script src="./app.js" defer></script>
+    <div id="root"></div>
+    <script type="module" src="./main.tsx"></script>
   </body>
 </html>

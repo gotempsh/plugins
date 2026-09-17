@@ -241,3 +241,39 @@ test("SEO detects absent and malformed metadata without claiming a ranking score
     ]),
   );
 });
+
+test("oversized responses preserve HTTP status without claiming a broken route", async () => {
+  const { CrawlError } = await import("./types");
+  const r = report(1);
+  await crawl(r, new AbortController().signal, {
+    delayMs: 0,
+    fetch: async (url) => {
+      if (url.pathname !== "/") return result("", 404);
+      throw new CrawlError(
+        "body_limit",
+        "Inspection incomplete: response exceeds the 8 MiB crawl limit.",
+        200,
+      );
+    },
+  });
+  expect(r.pages[0]?.status).toBe(200);
+  expect(r.pages[0]?.issues[0]?.severity).toBe("warning");
+  expect(r.pages[0]?.issues[0]?.fix).toContain(
+    "not evidence of a broken route",
+  );
+});
+test("large documentation HTML still extracts routes and metadata", async () => {
+  const { report: r } = await run(
+    {
+      "/": result(
+        '<html lang="en"><title>CLI reference</title><meta name="description" content="Commands"><h1>CLI</h1><pre>' +
+          "x".repeat(1343812) +
+          '</pre><a href="/next">Next</a></html>',
+      ),
+      "/next": result("<title>Next</title>"),
+    },
+    2,
+  );
+  expect(r.pages[0]?.title).toBe("CLI reference");
+  expect(r.pages.map((p) => new URL(p.url).pathname)).toEqual(["/", "/next"]);
+});

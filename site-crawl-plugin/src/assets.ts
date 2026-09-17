@@ -1,8 +1,8 @@
 // SPDX-FileCopyrightText: 2024-2026 Temps Contributors
 // SPDX-License-Identifier: MIT OR Apache-2.0
-import html from "../web/index.html" with { type: "text" };
-import css from "../web/style.css" with { type: "text" };
-import js from "../web/app.js" with { type: "text" };
+import html from "../web/dist/index.html" with { type: "text" };
+import css from "../web/dist/style.css" with { type: "text" };
+import js from "../web/dist/app.js" with { type: "text" };
 export const assets = new Map([
   [
     "index.html",
