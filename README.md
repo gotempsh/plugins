@@ -137,3 +137,9 @@ Live permission discovery is checked before each queued crawl. Revoking Events r
 The plugin UI uses React and an attributed snapshot of the Temps design-system components from the `design-system-ds` worktree: PageContainer, PageHeader, Button, Field, Callout, Status, PageState, and their Radix-based UI primitives. See `site-crawl-plugin/web/vendor/README.md` for provenance and update instructions. The Vite build embeds the UI into the native executable; no local-worktree dependency or external frontend service is required. Light/dark themes, keyboard-accessible dialogs and tabs, and responsive tables are supported.
 
 The 8 MiB response bound accommodates larger documentation HTML. Responses above this limit retain their observed HTTP status and report an incomplete-inspection warning rather than claiming a broken route. Existing saved reports retain their original results; rerun a crawl to apply the new behavior.
+
+### Tokenizer-based parsing
+
+HTML analysis and sitemap discovery use `htmlparser2` callbacks instead of constructing a Cheerio DOM. Only bounded SEO fields and crawl targets are retained: titles up to 1,000 characters, descriptions up to 2,000, and at most 2,000 links per page. Script/template/noscript/SVG content cannot introduce phantom page metadata or crawl links. XML sitemap parsing preserves namespaced URL discovery and document/URL caps.
+
+HTTP downloads still buffer at most 8 MiB before tokenization; this is not network-streaming analysis and does not execute JavaScript. HTML nesting over 128 levels and XML nesting over 64 levels stop inspection with a contextual warning/notice. Existing DNS, redirects, robots, scheduling and permission checks continue to apply.

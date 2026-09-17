@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2024-2026 Temps Contributors
 // SPDX-License-Identifier: MIT OR Apache-2.0
 import robotsParser from "robots-parser";
-import { load } from "cheerio";
+import { parseSitemap } from "./sitemap";
 import { setTimeout as delay } from "node:timers/promises";
 import { fetchPublic, normalize, USER_AGENT, type FetchPage } from "./http";
 import { analyzeHtml } from "./seo";
@@ -169,31 +169,23 @@ export async function crawl(
           );
           continue;
         }
-        const xml = load(sitemap.body, { xml: true });
-        if (xml("sitemapindex").length)
-          xml("sitemap > loc")
-            .slice(0, 5)
-            .each((_, el) => {
-              if (sitemapQueue.length < 5)
-                sitemapQueue.push(xml(el).text().trim());
-            });
-        else if (xml("urlset").length) {
-          xml("url > loc")
-            .slice(0, report.maxPages * 4)
-            .each((_, el) => {
-              const value = xml(el).text().trim();
-              try {
-                const target = normalize(value, mapUrl.href);
-                if (target.origin === origin) {
-                  sitemapPages.add(target.href);
-                  enqueue(target.href, mapUrl.href);
-                }
-              } catch {
-                /* malformed sitemap URL */
+        const xml = parseSitemap(sitemap.body, report.maxPages * 4);
+        if (xml.kind === "sitemapindex") {
+          for (const value of xml.locations)
+            if (sitemapQueue.length < 5) sitemapQueue.push(value);
+        } else if (xml.kind === "urlset") {
+          for (const value of xml.locations) {
+            try {
+              const target = normalize(value, mapUrl.href);
+              if (target.origin === origin) {
+                sitemapPages.add(target.href);
+                enqueue(target.href, mapUrl.href);
               }
-            });
-          if (xml("url > loc").length > report.maxPages * 4)
-            report.limited = true;
+            } catch {
+              /* malformed sitemap URL */
+            }
+          }
+          if (xml.limited) report.limited = true;
         } else
           notice(
             `Sitemap did not contain a urlset or sitemapindex: ${mapUrl.href}`,
@@ -292,12 +284,12 @@ export async function crawl(
           issue(
             code,
             message(error),
-            code === "body_limit"
-              ? "The response was too large to inspect completely; this is not evidence of a broken route. Reduce the HTML payload or inspect this page separately."
+            code === "body_limit" || code === "markup_depth"
+              ? "The response exceeded an inspection resource limit; this is not evidence of a broken route. Reduce the HTML payload or inspect this page separately."
               : code === "robots_blocked"
                 ? "Confirm this exclusion is intentional. Blocked pages were not inspected."
                 : "Check the URL and server, then run another crawl.",
-            code === "body_limit"
+            code === "body_limit" || code === "markup_depth"
               ? "warning"
               : code === "robots_blocked"
                 ? "info"

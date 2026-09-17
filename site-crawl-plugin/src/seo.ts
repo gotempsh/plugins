@@ -1,10 +1,10 @@
 // SPDX-FileCopyrightText: 2024-2026 Temps Contributors
 // SPDX-License-Identifier: MIT OR Apache-2.0
-import { load } from "cheerio";
+import { Parser } from "htmlparser2";
 import { normalize } from "./http";
-import type { Issue } from "./types";
+import { CrawlError, type Issue } from "./types";
 export function analyzeHtml(html: string, url: string, xRobots = "") {
-  const $ = load(html);
+  const fields = extractHtml(html);
   const issues: Issue[] = [];
   const add = (
     code: string,
@@ -12,13 +12,8 @@ export function analyzeHtml(html: string, url: string, xRobots = "") {
     message: string,
     fix: string,
   ) => issues.push({ code, severity, message, fix });
-  const title = $("head title").first().text().trim().slice(0, 1000);
-  const description =
-    $('head meta[name="description" i]')
-      .first()
-      .attr("content")
-      ?.trim()
-      .slice(0, 2000) ?? "";
+  const title = fields.title.trim();
+  const description = fields.description.trim();
   if (!title)
     add(
       "missing_title",
@@ -33,14 +28,14 @@ export function analyzeHtml(html: string, url: string, xRobots = "") {
       "No meta description.",
       "Describe this page in a meta description. Search engines may choose a different snippet.",
     );
-  if ($("h1").length === 0)
+  if (!fields.hasH1)
     add(
       "missing_h1",
       "info",
       "No primary heading.",
       "Add a clear heading that describes this page.",
     );
-  if (!$("html").attr("lang")?.trim())
+  if (!fields.language.trim())
     add(
       "missing_language",
       "info",
@@ -48,10 +43,8 @@ export function analyzeHtml(html: string, url: string, xRobots = "") {
       "Set the appropriate lang attribute on <html>.",
     );
   const robots = [
-    $('head meta[name="robots" i]')
-      .map((_, el) => $(el).attr("content") ?? "")
-      .get()
-      .join(","),
+    fields.noindex ? "noindex" : "",
+    fields.nofollow ? "nofollow" : "",
     xRobots,
   ]
     .join(",")
@@ -63,16 +56,16 @@ export function analyzeHtml(html: string, url: string, xRobots = "") {
       "Indexing is disabled by a robots directive.",
       "If this page should appear in search, remove its noindex directive. Keep it for intentionally private or excluded pages.",
     );
-  const canonicals = $('head link[rel~="canonical" i]');
+
   let canonical: string | null = null;
-  if (canonicals.length > 1)
+  if (fields.canonicalCount > 1)
     add(
       "multiple_canonicals",
       "warning",
       "Multiple canonical URLs are declared.",
       "Keep one consistent canonical URL for this page.",
     );
-  const raw = canonicals.first().attr("href");
+  const raw = fields.canonical;
   if (raw) {
     try {
       canonical = normalize(raw, url).href;
@@ -100,7 +93,7 @@ export function analyzeHtml(html: string, url: string, xRobots = "") {
     );
   let base = url;
   try {
-    const rawBase = $("base[href]").first().attr("href");
+    const rawBase = fields.base;
     if (rawBase) base = normalize(rawBase, url).href;
   } catch {
     /* invalid base falls back to the document */
@@ -108,17 +101,15 @@ export function analyzeHtml(html: string, url: string, xRobots = "") {
   const links: string[] = [];
   const nofollow = /\b(nofollow|none)\b/.test(robots);
   if (!nofollow)
-    $("a[href]")
-      .slice(0, 2000)
-      .each((_, el) => {
-        if (/\bnofollow\b/i.test($(el).attr("rel") ?? "")) return;
-        try {
-          links.push(normalize($(el).attr("href") ?? "", base).href);
-        } catch {
-          /* non-HTTP/oversized links are not crawl targets */
-        }
-      });
-  if ($("a[href]").length > 2000)
+    for (const link of fields.links) {
+      if (/\bnofollow\b/i.test(link.rel)) continue;
+      try {
+        links.push(normalize(link.href, base).href);
+      } catch {
+        /* unsupported crawl target */
+      }
+    }
+  if (fields.linkCount > 2000)
     add(
       "link_limit",
       "info",
@@ -126,4 +117,129 @@ export function analyzeHtml(html: string, url: string, xRobots = "") {
       "Split very large navigation lists across smaller pages.",
     );
   return { title, description, canonical, links: [...new Set(links)], issues };
+}
+
+/** Tokenizer callbacks retain only bounded SEO fields, never a document tree. */
+function extractHtml(html: string) {
+  const fields = {
+    title: "",
+    description: "",
+    hasH1: false,
+    language: "",
+    noindex: false,
+    nofollow: false,
+    canonicalCount: 0,
+    canonical: undefined as string | undefined,
+    base: undefined as string | undefined,
+    links: [] as { href: string; rel: string }[],
+    linkCount: 0,
+  };
+  let inHead = true,
+    titleOpen = false,
+    titleSeen = false,
+    descriptionSeen = false,
+    languageSeen = false,
+    baseSeen = false;
+  let ignored = 0;
+  let depth = 0;
+  const suppressed = new Set([
+    "script",
+    "style",
+    "noscript",
+    "svg",
+    "math",
+    "template",
+  ]);
+  const headTags = new Set([
+    "html",
+    "head",
+    "title",
+    "base",
+    "link",
+    "meta",
+    "script",
+    "style",
+    "noscript",
+    "template",
+  ]);
+  const parser = new Parser(
+    {
+      onopentag(name, attrs) {
+        if (++depth > 128)
+          throw new CrawlError(
+            "markup_depth",
+            "Inspection incomplete: HTML nesting exceeds 128 levels.",
+          );
+        if (suppressed.has(name)) {
+          ignored++;
+          return;
+        }
+        if (ignored) return;
+        // HTML permits an omitted <head>. Its first body element ends that head.
+        if (name === "body" || !headTags.has(name)) inHead = false;
+        if (name === "html" && !languageSeen) {
+          fields.language = (attrs.lang ?? "").slice(0, 100);
+          languageSeen = true;
+        }
+        if (name === "title" && inHead && !titleSeen) {
+          titleSeen = true;
+          titleOpen = true;
+        }
+        if (name === "h1") fields.hasH1 = true;
+        if (name === "meta" && inHead) {
+          const key = attrs.name?.toLowerCase();
+          const content = attrs.content ?? "";
+          if (key === "description" && !descriptionSeen) {
+            fields.description = content.trim().slice(0, 2000);
+            descriptionSeen = true;
+          }
+          if (key === "robots") {
+            fields.noindex ||= /\b(noindex|none)\b/i.test(content);
+            fields.nofollow ||= /\b(nofollow|none)\b/i.test(content);
+          }
+        }
+        if (
+          name === "link" &&
+          inHead &&
+          attrs.rel?.toLowerCase().split(/\s+/).includes("canonical")
+        ) {
+          if (fields.canonicalCount === 0)
+            fields.canonical = attrs.href?.slice(0, 2049);
+          fields.canonicalCount++;
+        }
+        if (name === "base" && attrs.href !== undefined && !baseSeen) {
+          fields.base = attrs.href.slice(0, 2049);
+          baseSeen = true;
+        }
+        if (name === "a" && attrs.href !== undefined) {
+          fields.linkCount++;
+          if (fields.linkCount <= 2000)
+            fields.links.push({
+              href: attrs.href.slice(0, 2049),
+              rel: /\bnofollow\b/i.test(attrs.rel ?? "") ? "nofollow" : "",
+            });
+        }
+      },
+      ontext(text) {
+        if (titleOpen && !ignored && fields.title.length < 1000)
+          fields.title += (fields.title ? text : text.trimStart()).slice(
+            0,
+            1000 - fields.title.length,
+          );
+      },
+      onclosetag(name) {
+        depth = Math.max(0, depth - 1);
+        if (suppressed.has(name) && ignored > 0) {
+          ignored--;
+          return;
+        }
+        if (ignored) return;
+        if (name === "title") titleOpen = false;
+        if (name === "head") inHead = false;
+      },
+    },
+    { decodeEntities: true },
+  );
+  parser.end(html);
+  return fields;
 }
