@@ -1,3 +1,4 @@
+import { validPath } from "./catalog";
 import { gunzipSync } from "node:zlib";
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, join, posix } from "node:path";
@@ -6,7 +7,8 @@ const MAX_ARCHIVE = 20 * 1024 * 1024;
 const MAX_EXPANDED = 100 * 1024 * 1024;
 const MAX_ENTRIES = 10_000;
 
-export async function extract(archivePath: string, destination: string) {
+export async function extract(archivePath: string, destination: string, pluginPath = "") {
+  if (!validPath(pluginPath)) throw new Error("Invalid plugin path");
   const compressed = await Bun.file(archivePath).arrayBuffer();
   if (compressed.byteLength > MAX_ARCHIVE) throw new Error("Archive exceeds 20 MiB compressed limit");
   const tar = gunzipSync(Buffer.from(compressed), { maxOutputLength: MAX_EXPANDED });
@@ -34,7 +36,9 @@ export async function extract(archivePath: string, destination: string) {
     if (rawName.startsWith("/") || rawName.includes("\\")) throw new Error("Unsafe archive path");
     const parts = rawName.replace(/\/$/, "").split("/");
     if (parts.some(part => !part || part === "." || part === "..")) throw new Error("Unsafe archive path");
-    const relative = parts.slice(1).join("/");
+    const fullPath = parts.slice(1).join("/");
+    const prefix = pluginPath ? `${pluginPath}/` : "";
+    const relative = fullPath.startsWith(prefix) ? fullPath.slice(prefix.length) : "";
     if (relative) {
       if (posix.normalize(relative) !== relative || seen.has(relative)) throw new Error("Duplicate or unsafe archive path");
       seen.add(relative);
@@ -47,7 +51,7 @@ export async function extract(archivePath: string, destination: string) {
     }
     offset = next;
   }
-  if (!seen.has("package.json") || !seen.has("bun.lock")) throw new Error("Archive requires root package.json and bun.lock");
+  if (!seen.has("package.json") || !seen.has("bun.lock")) throw new Error("Selected plugin directory requires package.json and bun.lock");
 }
 
-if (import.meta.main) await extract(process.argv[2], process.argv[3]);
+if (import.meta.main) await extract(process.argv[2], process.argv[3], process.argv[4]);

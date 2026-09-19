@@ -13,6 +13,7 @@ docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp --read-only --cap-drop=A
 jq -c '.[]' "$scratch/plan.json" | while IFS= read -r item; do
   repo="$(jq -r '.repository | sub("^https://github.com/"; "")' <<< "$item")"
   commit="$(jq -r '.commit' <<< "$item")"
+  plugin_path="$(jq -r '.path // ""' <<< "$item")"
   project="$scratch/project"
   mkdir -p "$project"
   curl --fail --location --silent --show-error --max-time 60 \
@@ -25,7 +26,7 @@ jq -c '.[]' "$scratch/plan.json" | while IFS= read -r item; do
     --pids-limit=128 --memory=512m --cpus=1 --tmpfs /tmp:rw,nosuid,nodev,size=128m \
     --mount type=bind,src="$project",dst=/work --mount type=bind,src="$scratch/source.tar.gz",dst=/source.tar.gz,readonly \
     --mount type=bind,src="$PWD/scripts",dst=/scripts,readonly \
-    --workdir /work "$image" bun /scripts/safe-extract.ts /source.tar.gz /work
+    --workdir /work "$image" bun /scripts/safe-extract.ts /source.tar.gz /work "$plugin_path"
   docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp --cap-drop=ALL --security-opt=no-new-privileges \
     --pids-limit=128 --memory=2g --cpus=2 --tmpfs /tmp:rw,nosuid,nodev,size=128m \
     --mount type=bind,src="$project",dst=/work --workdir /work "$image" bun install --frozen-lockfile --ignore-scripts
@@ -35,7 +36,7 @@ jq -c '.[]' "$scratch/plan.json" | while IFS= read -r item; do
       entrypoint="$(bun -e "const p=await Bun.file(\"package.json\").json();const e=p.temps?.entrypoint;if(typeof e!==\"string\"||!/^src\\/[a-zA-Z0-9_./-]+\\.tsx?$/.test(e)||e.includes(\"..\"))process.exit(1);console.log(e)")"
       bun build "$entrypoint" --target=bun --compile --outfile /tmp/temps-plugin-check
     '
-  echo "Build checked $repo@$commit (install scripts disabled; compile network disabled)"
+  echo "Build checked $repo/$plugin_path@$commit (install scripts disabled; compile network disabled)"
   rm -rf "$project" "$scratch/source.tar.gz"
 done
 cp "$scratch/plan.json" .catalog-build-plan.json

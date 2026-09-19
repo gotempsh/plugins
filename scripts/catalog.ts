@@ -8,20 +8,37 @@ const repoPattern = /^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,38})\/[a-zA-Z0-9._-]{1,100}$/
 const namePattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const shaPattern = /^[a-f0-9]{40}$/;
 
-export type Listing = { repo: string; categories: string[] };
+export type Listing = { repo: string; categories: string[]; path?: string; ref?: string };
 export type CatalogPlugin = {
   name: string; title: string; summary: string; description: string; author: string;
-  category: string; repository: string; docsUrl: string | null; logoUrl: string | null;
+  category: string; repository: string; path?: string; ref?: string; docsUrl: string | null; logoUrl: string | null;
   screenshots: { url: string; alt: string; caption: string }[];
   latestVersion: string; platforms: string[]; commit: string; readmeUrl: string;
   validation: { metadata: "passed"; build: "not_run" | "passed" };
 };
 
+/** Same canonical, repository-relative selector accepted by the host installer. */
+export function validPath(path: string): boolean {
+  return path.length <= 512 && (path === "" || path.split("/").every(part =>
+    /^[A-Za-z0-9_.-]+$/.test(part) && ![".", "..", ".git"].includes(part.toLowerCase())));
+}
+
+export function validRef(ref: string): boolean {
+  return ref.length > 0 && ref.length <= 128 && !ref.startsWith("-") &&
+    /^[A-Za-z0-9_./-]+$/.test(ref) && !ref.includes("..");
+}
+
+export function buildPlan(plugins: CatalogPlugin[]) {
+  return plugins.map(plugin => ({ repository: plugin.repository, path: plugin.path ?? "", ref: plugin.ref, commit: plugin.commit }));
+}
+
 export function parseListing(filename: string, value: unknown): Listing {
   if (!namePattern.test(filename)) throw new Error(`Invalid listing filename: ${filename}`);
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error(`${filename}: expected object`);
   const data = value as Record<string, unknown>;
-  if (Object.keys(data).sort().join(",") !== "categories,repo") throw new Error(`${filename}: only repo and categories are allowed`);
+  if (Object.keys(data).some(key => !["categories", "repo", "path", "ref"].includes(key))) throw new Error(`${filename}: only repo, categories, path and ref are allowed`);
+  if (data.path !== undefined && (typeof data.path !== "string" || !validPath(data.path))) throw new Error(`${filename}: invalid plugin path`);
+  if (data.ref !== undefined && (typeof data.ref !== "string" || !validRef(data.ref))) throw new Error(`${filename}: invalid Git ref`);
   if (typeof data.repo !== "string" || !repoPattern.test(data.repo) || data.repo.includes("..")) throw new Error(`${filename}: invalid GitHub owner/repo`);
   if (!Array.isArray(data.categories) || data.categories.length === 0 || data.categories.some(c => typeof c !== "string" || !categories.has(c)) || new Set(data.categories).size !== data.categories.length) throw new Error(`${filename}: invalid categories`);
   return data as Listing;
@@ -51,15 +68,16 @@ function requiredString(value: unknown, context: string): string {
 export async function resolvePlugin(name: string, listing: Listing, fetcher: typeof fetch = fetch): Promise<CatalogPlugin> {
   const repo = await githubJson(`${API}/repos/${listing.repo}`, fetcher);
   if (repo.private || repo.full_name?.toLowerCase() !== listing.repo.toLowerCase()) throw new Error(`${listing.repo}: repository is private or renamed`);
-  const branch = requiredString(repo.default_branch, `${listing.repo} default branch`);
+  const branch = requiredString(listing.ref ?? repo.default_branch, `${listing.repo} default branch`);
   const commit = await githubJson(`${API}/repos/${listing.repo}/commits/${encodeURIComponent(branch)}`, fetcher);
   const sha = requiredString(commit.sha, `${listing.repo} commit`);
   if (!shaPattern.test(sha)) throw new Error(`${listing.repo}: invalid commit SHA`);
-  const pkg = JSON.parse(await githubText(listing.repo, sha, "package.json", fetcher));
+  const prefix = listing.path ? `${listing.path}/` : "";
+  const pkg = JSON.parse(await githubText(listing.repo, sha, `${prefix}package.json`, fetcher));
   const manifest = pkg?.temps;
   if (!manifest || typeof manifest !== "object") throw new Error(`${listing.repo}: package.json missing temps manifest`);
   if (requiredString(manifest.name, `${listing.repo} temps.name`) !== name) throw new Error(`${listing.repo}: temps.name must match ${name}`);
-  const readme = await githubText(listing.repo, sha, "README.md", fetcher);
+  const readme = await githubText(listing.repo, sha, `${prefix}README.md`, fetcher);
   if (!readme.trim()) throw new Error(`${listing.repo}: README.md is empty`);
   const title = requiredString(manifest.title ?? pkg.displayName ?? name, `${listing.repo} title`);
   const summary = requiredString(manifest.summary ?? pkg.description, `${listing.repo} summary`);
@@ -68,10 +86,10 @@ export async function resolvePlugin(name: string, listing: Listing, fetcher: typ
   const version = requiredString(pkg.version, `${listing.repo} version`);
   const platforms = Array.isArray(manifest.platforms) ? manifest.platforms : [];
   if (platforms.some((p: unknown) => typeof p !== "string" || !/^[a-z0-9_-]+$/.test(p))) throw new Error(`${listing.repo}: invalid platforms`);
-  const rawBase = `https://raw.githubusercontent.com/${listing.repo}/${sha}`;
+  const rawBase = `https://raw.githubusercontent.com/${listing.repo}/${sha}${listing.path ? `/${listing.path}` : ""}`;
   const asset = (path: unknown): string | null => {
     if (path == null) return null;
-    if (typeof path !== "string" || !/^(?!\/)(?!.*(?:^|\/)\.\.?\/)[a-zA-Z0-9_./-]+$/.test(path)) throw new Error(`${listing.repo}: invalid asset path`);
+    if (typeof path !== "string" || !path || !validPath(path)) throw new Error(`${listing.repo}: invalid asset path`);
     return `${rawBase}/${path}`;
   };
   const shots = manifest.screenshots ?? [];
@@ -79,6 +97,7 @@ export async function resolvePlugin(name: string, listing: Listing, fetcher: typ
   return {
     name, title, summary, description, author: requiredString(author ?? repo.owner?.login, `${listing.repo} author`),
     category: categoryLabels[listing.categories[0]], repository: `https://github.com/${listing.repo}`,
+    ...(listing.path ? { path: listing.path } : {}), ref: branch,
     docsUrl: typeof manifest.docsUrl === "string" && /^https:\/\//.test(manifest.docsUrl) ? manifest.docsUrl : null,
     logoUrl: asset(manifest.logo), screenshots: shots.map((shot: any) => {
       const url = asset(shot?.path);
@@ -98,11 +117,12 @@ export async function generate(root: string, fetcher: typeof fetch = fetch) {
   for (const filename of names) {
     const name = filename.slice(0, -5);
     const listing = parseListing(name, JSON.parse(await readFile(join(registry, filename), "utf8")));
-    if (repos.has(listing.repo.toLowerCase())) throw new Error(`${filename}: duplicate repository`);
-    repos.add(listing.repo.toLowerCase());
+    const identity = `${listing.repo.toLowerCase()}#${listing.path ?? ""}`;
+    if (repos.has(identity)) throw new Error(`${filename}: duplicate repository and path`);
+    repos.add(identity);
     plugins.push(await resolvePlugin(name, listing, fetcher));
   }
-  return { schema_version: 1, generated_at: new Date().toISOString(), plugins };
+  return { schema_version: plugins.some(plugin => plugin.path) ? 2 : 1, generated_at: new Date().toISOString(), plugins };
 }
 
 if (import.meta.main) {
@@ -111,13 +131,13 @@ if (import.meta.main) {
   if (mode !== "--check" && mode !== "--write" && mode !== "--plan") throw new Error("Usage: bun scripts/catalog.ts --check|--write|--plan");
   const catalog = await generate(root);
   if (mode === "--plan") {
-    console.log(JSON.stringify(catalog.plugins.map(plugin => ({ repository: plugin.repository, commit: plugin.commit }))));
+    console.log(JSON.stringify(buildPlan(catalog.plugins)));
     process.exit(0);
   }
   if (mode === "--write") {
     if (process.env.CATALOG_BUILD_VERIFIED === "1") {
       const plan = JSON.parse(await readFile(join(root, ".catalog-build-plan.json"), "utf8"));
-      if (!Array.isArray(plan) || JSON.stringify(plan) !== JSON.stringify(catalog.plugins.map(plugin => ({ repository: plugin.repository, commit: plugin.commit })))) {
+      if (!Array.isArray(plan) || JSON.stringify(plan) !== JSON.stringify(buildPlan(catalog.plugins))) {
         throw new Error("Build plan does not match resolved catalog commits");
       }
       for (const plugin of catalog.plugins) plugin.validation.build = "passed";
