@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-09-19T08:05:48.008Z",
+  "generated_at": "2026-09-19T09:07:30.940Z",
   "plugins": [
     {
       "name": "my-plugin",
@@ -35,6 +35,26 @@
       ],
       "commit": "77433f82e9dfa581b4486f465f19124ff16dd50c",
       "readmeUrl": "https://raw.githubusercontent.com/gotempsh/temps-plugin-template/77433f82e9dfa581b4486f465f19124ff16dd50c/README.md",
+      "validation": {
+        "metadata": "passed",
+        "build": "passed"
+      }
+    },
+    {
+      "name": "site-crawl",
+      "title": "Site Crawl",
+      "summary": "Find broken internal routes and technical SEO issues in deployed sites",
+      "description": "Find broken internal routes and technical SEO issues in deployed sites",
+      "author": "Temps Contributors",
+      "category": "SEO",
+      "repository": "https://github.com/gotempsh/temps-plugin-site-crawl",
+      "docsUrl": null,
+      "logoUrl": null,
+      "screenshots": [],
+      "latestVersion": "0.1.0",
+      "platforms": [],
+      "commit": "a1a2887dd136dbca93493a765769b83993718557",
+      "readmeUrl": "https://raw.githubusercontent.com/gotempsh/temps-plugin-site-crawl/a1a2887dd136dbca93493a765769b83993718557/README.md",
       "validation": {
         "metadata": "passed",
         "build": "passed"
