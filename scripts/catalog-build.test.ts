@@ -11,7 +11,9 @@ for (const path of ["../.github/workflows/catalog.yml", "./validate-build.sh"]) 
       expect(command).toContain('--cap-drop=ALL');
       expect(command).toContain('--security-opt=no-new-privileges');
     }
-    expect(source).toContain('--network=none');
-    expect(source).toContain('--ignore-scripts');
+    if (path === "./validate-build.sh") {
+      expect(source).toContain('--network=none');
+      expect(source).toContain('--ignore-scripts');
+    } else expect(source).toContain("bash scripts/validate-build.sh");
   });
 }
