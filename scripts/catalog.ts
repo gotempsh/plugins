@@ -9,7 +9,24 @@ const namePattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const shaPattern = /^[a-f0-9]{40}$/;
 
 export type Listing = { repo: string; categories: string[] };
+export type CatalogPermission = { permission: string; required: boolean; reason: string };
+const permissionNames = new Set(['ai_generate', 'projects_read', 'environments_read', 'deployments_read', 'events_read', 'api_read', 'api_write']);
+
+export function parsePermissions(value: unknown, context: string): CatalogPermission[] | undefined {
+  if (value === undefined) return undefined;
+  if (!Array.isArray(value) || value.length > permissionNames.size) throw new Error(`${context}: permissions must be an array of at most seven entries`);
+  const seen = new Set<string>();
+  return value.map(entry => {
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) throw new Error(`${context}: invalid permission entry`);
+    const { permission, required, reason } = entry;
+    if (Object.keys(entry).sort().join(',') !== 'permission,reason,required' || !permissionNames.has(permission) || seen.has(permission) || typeof required !== 'boolean' || typeof reason !== 'string' || !reason.trim() || Array.from(reason).length > 500) throw new Error(`${context}: invalid or duplicate permission requirement`);
+    seen.add(permission);
+    return { permission, required, reason: reason.trim() };
+  });
+}
+
 export type CatalogPlugin = {
+  permissions?: CatalogPermission[];
   name: string; title: string; summary: string; description: string; author: string;
   category: string; repository: string; docsUrl: string | null; logoUrl: string | null;
   screenshots: { url: string; alt: string; caption: string }[];
@@ -68,6 +85,7 @@ export async function resolvePlugin(name: string, listing: Listing, fetcher: typ
   const version = requiredString(pkg.version, `${listing.repo} version`);
   const platforms = Array.isArray(manifest.platforms) ? manifest.platforms : [];
   if (platforms.some((p: unknown) => typeof p !== "string" || !/^[a-z0-9_-]+$/.test(p))) throw new Error(`${listing.repo}: invalid platforms`);
+  const permissions = parsePermissions(manifest.permissions, `${listing.repo} temps.permissions`);
   const rawBase = `https://raw.githubusercontent.com/${listing.repo}/${sha}`;
   const asset = (path: unknown): string | null => {
     if (path == null) return null;
@@ -77,6 +95,7 @@ export async function resolvePlugin(name: string, listing: Listing, fetcher: typ
   const shots = manifest.screenshots ?? [];
   if (!Array.isArray(shots) || shots.length > 8) throw new Error(`${listing.repo}: invalid screenshots`);
   return {
+    ...(permissions !== undefined ? { permissions } : {}),
     name, title, summary, description, author: requiredString(author ?? repo.owner?.login, `${listing.repo} author`),
     category: categoryLabels[listing.categories[0]], repository: `https://github.com/${listing.repo}`,
     docsUrl: typeof manifest.docsUrl === "string" && /^https:\/\//.test(manifest.docsUrl) ? manifest.docsUrl : null,
