@@ -15,3 +15,14 @@ for (const path of ["../.github/workflows/catalog.yml", "./validate-build.sh"]) 
     expect(source).toContain('--ignore-scripts');
   });
 }
+
+for (const path of ["../.github/workflows/catalog.yml", "./validate-build.sh"]) {
+  test(`${path}: dependency extraction has bounded space for frontend toolchains`, async () => {
+    const source = await Bun.file(new URL(path, import.meta.url)).text();
+    const buildLimits = source.split("\n").filter(line => line.includes("--memory=2g"));
+    expect(buildLimits.length).toBeGreaterThan(0);
+    for (const line of buildLimits) {
+      expect(line).toContain("--tmpfs /tmp:rw,nosuid,nodev,size=512m");
+    }
+  });
+}
