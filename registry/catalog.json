@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-09-19T09:18:45.332Z",
+  "generated_at": "2026-09-19T09:40:45.617Z",
   "plugins": [
     {
       "name": "my-plugin",
@@ -41,6 +41,13 @@
       }
     },
     {
+      "permissions": [
+        {
+          "permission": "events_read",
+          "required": false,
+          "reason": "Enables automatic crawls after successful deployments. Manual crawls work without this permission."
+        }
+      ],
       "name": "site-crawl",
       "title": "Site Crawl",
       "summary": "Find broken internal routes and technical SEO issues in deployed sites",
@@ -56,8 +63,8 @@
         "darwin-arm64",
         "linux-amd64-gnu"
       ],
-      "commit": "7410f9615d67a6e125cff37c992535063b9993d4",
-      "readmeUrl": "https://raw.githubusercontent.com/gotempsh/temps-plugin-site-crawl/7410f9615d67a6e125cff37c992535063b9993d4/README.md",
+      "commit": "07f3ab525469fe5600b639881f8d466784180563",
+      "readmeUrl": "https://raw.githubusercontent.com/gotempsh/temps-plugin-site-crawl/07f3ab525469fe5600b639881f8d466784180563/README.md",
       "validation": {
         "metadata": "passed",
         "build": "passed"
