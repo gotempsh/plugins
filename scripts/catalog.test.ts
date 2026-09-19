@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { parseListing, resolvePlugin } from "./catalog";
+import { parseListing, resolvePlugin, parsePermissions } from "./catalog";
 
 const sha = "a".repeat(40);
 const listing = { repo: "gotempsh/temps-plugin-template", categories: ["developer-tools"] };
@@ -38,4 +38,21 @@ describe("catalog submissions", () => {
   test("rejects asset traversal", async () => {
     await expect(resolvePlugin("my-plugin", listing, fixture({ ...pkg, temps: { ...pkg.temps, logo: "../secret" } }))).rejects.toThrow("invalid asset path");
   });
+});
+
+
+test('permission metadata preserves legacy unknown, explicit none and author requirements', async () => {
+  expect(parsePermissions(undefined, 'demo')).toBeUndefined();
+  expect(parsePermissions([], 'demo')).toEqual([]);
+  const permissions = [{permission:'events_read', required:false, reason:'  Enables deployment crawls.  '}];
+  const result = await resolvePlugin('my-plugin', listing, fixture({...pkg, temps:{...pkg.temps, permissions}}));
+  expect(result.permissions).toEqual([{permission:'events_read', required:false, reason:'Enables deployment crawls.'}]);
+  expect(parsePermissions([{permission:'projects_read', required:true, reason:'Lists projects.'}], 'demo')?.[0].required).toBe(true);
+});
+
+test('permission metadata rejects malformed, duplicate, unknown and oversized requirements', () => {
+  const valid = {permission:'events_read', required:false, reason:'Deployment crawls.'};
+  for (const value of [null, {}, [null], [valid,valid], [{...valid,permission:'secrets_read'}], [{...valid,required:'yes'}], [{...valid,reason:' '}], [{...valid,reason:'x'.repeat(501)}], Array(8).fill(valid), [{...valid,extra:true}]]) {
+    expect(() => parsePermissions(value, 'demo')).toThrow();
+  }
 });

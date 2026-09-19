@@ -34,3 +34,27 @@ The dependency-install phase has network access to download locked packages;
 only the subsequent compile phase is offline. Lifecycle scripts are disabled
 during installation. This is build validation, not full network isolation or
 a malware review.
+
+## Permission requirements
+
+Plugin authors declare `temps.permissions` in the plugin's `package.json` at the
+same commit as its source. These entries describe the runtime manifest's requested
+host permissions; they never grant access themselves.
+
+```json
+"permissions": [
+  { "permission": "events_read", "required": false, "reason": "Enables crawls after deployments. Manual crawls work without this permission." }
+]
+```
+
+Use `required: true` only when the plugin's core functionality cannot work without
+that permission. Optional entries explain which feature is unavailable if denied.
+Administrators explicitly approve every grant, including required permissions.
+The install UI asks for required approvals before proceeding; runtime host
+permission checks remain authoritative and grants can be revoked later.
+
+Omission means requirements are unknown (legacy metadata), not that no access is
+needed. Use an explicit empty array for a plugin requesting no host permissions.
+Only the seven host permissions are accepted; entries must be unique, include a
+boolean `required` and a nonempty explanation of at most 500 characters.
+Catalog validation checks metadata shape, not whether source code tells the truth.
