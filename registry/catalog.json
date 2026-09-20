@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-09-19T09:40:45.617Z",
+  "generated_at": "2026-09-20T08:38:13.103Z",
   "plugins": [
     {
       "name": "my-plugin",
@@ -63,8 +63,8 @@
         "darwin-arm64",
         "linux-amd64-gnu"
       ],
-      "commit": "07f3ab525469fe5600b639881f8d466784180563",
-      "readmeUrl": "https://raw.githubusercontent.com/gotempsh/temps-plugin-site-crawl/07f3ab525469fe5600b639881f8d466784180563/README.md",
+      "commit": "21c10e7614d64f8af7ae8c90a7c43bf592a383f1",
+      "readmeUrl": "https://raw.githubusercontent.com/gotempsh/temps-plugin-site-crawl/21c10e7614d64f8af7ae8c90a7c43bf592a383f1/README.md",
       "validation": {
         "metadata": "passed",
         "build": "passed"
