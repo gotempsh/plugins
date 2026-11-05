@@ -49,6 +49,11 @@ jobs:
         working-directory: deployment-pulse-plugin
         run: bun install --frozen-lockfile
 
+      - name: Test registry publisher
+        run: |
+          bun test scripts/publish-plugin.test.ts
+          deployment-pulse-plugin/node_modules/.bin/tsc --project scripts/tsconfig.json
+
       - name: Test and build Deployment Pulse
         working-directory: deployment-pulse-plugin
         run: |

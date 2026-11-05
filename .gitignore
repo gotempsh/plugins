@@ -18,6 +18,8 @@ dist/
 .env
 .env.*
 !.env.example
+.registry-secrets/
+catalog-*.private.pem
 
 # Logs
 *.log
