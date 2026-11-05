@@ -55,3 +55,21 @@ jobs:
           bun run test
           bun run build
           bunx tsc --noEmit
+
+  site-crawl:
+    name: Site Crawl plugin
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.4.2
+      - name: Install locked dependencies
+        working-directory: site-crawl-plugin
+        run: bun install --frozen-lockfile --ignore-scripts
+      - name: Check, test and compile native plugin
+        working-directory: site-crawl-plugin
+        run: |
+          bun run check
+          bun test src
+          bun run build

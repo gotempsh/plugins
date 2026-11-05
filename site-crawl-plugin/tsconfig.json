@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "noEmit": true,
+    "resolveJsonModule": true,
+    "types": ["bun"],
+    "skipLibCheck": true,
+    "allowImportingTsExtensions": true,
+    "jsx": "react-jsx"
+  },
+  "include": [
+    "src/**/*.ts",
+    "scripts/**/*.ts",
+    "web/**/*.tsx",
+    "web/**/*.ts",
+    "vite.config.ts"
+  ]
+}
